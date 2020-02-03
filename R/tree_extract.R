@@ -166,6 +166,8 @@ extract_package_info <- function(packages){
 extract_package_tree <- function(packages){
   `%notin%` = Negate(`%in%`)
   package_list <- packages
+  message("Extracting direct dependencies...")
+
   package_tree <- extract_package_info(packages = packages)
   package_tree$level <- "level_0"
   package_tree$stems_from <- "direct_call"
@@ -178,6 +180,7 @@ extract_package_tree <- function(packages){
   while(identical(package_list_new, package_list) == F){
     level_num <- level_num + 1
     level_val <- paste0("level_", level_num)
+    message(paste0("Extracting level ", level_num, " dependencies..."))
 
     new_branches_info <- package_tree %>%
       unnest(package_dependencies) %>%
