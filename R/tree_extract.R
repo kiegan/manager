@@ -129,20 +129,28 @@ extract_package_info <- function(packages){
         package_objects <- package_objects %>%
           # class of object and object itself
           mutate(obj_class = purrr::map(object_chr_call, .f = function(x) {class(lazyeval::lazy_eval(x))}),
-                 function_text = purrr::map(object_chr_call, .f = function(x) {lazyeval::lazy_eval(x)}),
+                 function_text = purrr::map2(.x = object_chr_call, .y = obj_class,
+                                             .f = function(x,y){
+                                               if(y[1] == "function") {body(lazyeval::lazy_eval(x))}
+                                               else {lazyeval::lazy_eval(x)}
+                                               #lazyeval::lazy_eval(x)
+                                             }),
                  # checksum for object
                  obj_checksum = purrr::map_chr(function_text, .f = function(x) digest(x, algo = "md5")),
-                 fun_type = purrr::map2_chr(.x = function_text, .y = obj_type, .f = function(x,y){
+                 fun_type = purrr::map_chr(object_chr_call, .f = function(x){
+                   fun_text <- lazyeval::lazy_eval(x)
                    function_type = NA
-                   function_type = ifelse(is_primitive(x), "primitive", function_type)
-                   function_type = ifelse(is_closure(x), "closure", function_type)
+                   function_type = ifelse(is_primitive(fun_text), "primitive", function_type)
+                   function_type = ifelse(is_closure(fun_text), "closure", function_type)
                    return(function_type)
                  }),
                  fun_params = purrr::map2(.x = object_chr_call, .y = fun_type, .f = function(x, y){
                    param_input <- ifelse(is.na(y), NA, x)
                    param_df <- extract_function_params(param_input)
                    return(param_df)
-                 }))
+                 }),
+                 params_checksum = purrr::map_chr(fun_params, .f = function(x) digest(x, algo = "md5")))
+
 
         return(package_objects)}
     }))
@@ -153,7 +161,7 @@ extract_package_info <- function(packages){
 
 
 
-#' Extract entire dependency network for package or vector of packages
+#' Take inventory of entire dependency network for package or vector of packages
 #'
 #' @param packages package name or vector of package names
 #'
@@ -161,9 +169,9 @@ extract_package_info <- function(packages){
 #' @export
 #'
 #' @examples
-#' extract_package_tree(packages = "ggplot2")
-#' extract_package_tree(packages = c("ggplot2", "dplyr"))
-extract_package_tree <- function(packages){
+#' take_inventory(packages = "ggplot2")
+#' take_inventory(packages = c("ggplot2", "dplyr"))
+take_inventory <- function(packages){
   `%notin%` = Negate(`%in%`)
   package_list <- packages
   message("Extracting direct dependencies...")
@@ -210,16 +218,16 @@ extract_package_tree <- function(packages){
 
 #' Plot dependency tree
 #'
-#' @param tree_object a tibble exported from the `extract_package_tree` function
+#' @param inventory_object a tibble exported from the `take_inventory` function
 #'
 #' @return a ggplot visualization of the given dependency tree
 #' @export
 #'
 #' @examples
-#' ggplot2_tree <- extract_package_tree(packages = "ggplot2")
-#' plot_tree(tree_object = ggplot2_tree)
-plot_tree <- function(tree_object){
-  tree_plot <- tree_object %>%
+#' ggplot2_inventory <- take_inventory(packages = "ggplot2")
+#' plot_inventory(inventory_object = ggplot2_inventory)
+plot_inventory <- function(inventory_object){
+  tinventory_plot <- inventory_object %>%
     mutate(num_package_objects = purrr::map_dbl(package_objects, .f = function(x){
       nrow(x)
     })) %>%
@@ -240,25 +248,25 @@ plot_tree <- function(tree_object){
 
   pkg_source <- c()
   row_id <- c()
-  for(i in 1:nrow(tree_plot)){
-    pkg_source[i] <- ifelse(tree_plot$stems_from[i] == "direct_call",
-                            NA, tree_plot$stems_from[i])
-    row_id[i] <- ifelse(is.na(pkg_source[i]), NA, which(tree_plot$package_name == pkg_source[i]))
+  for(i in 1:nrow(inventory_plot)){
+    pkg_source[i] <- ifelse(inventory_plot$stems_from[i] == "direct_call",
+                            NA, inventory_plot$stems_from[i])
+    row_id[i] <- ifelse(is.na(pkg_source[i]), NA, which(inventory_plot$package_name == pkg_source[i]))
   }
-  tree_plot$arrow_start_x = tree_plot$x_coord_plot[row_id]
+  inventory_plot$arrow_start_x = inventory_plot$x_coord_plot[row_id]
 
-  labels_dat <- tree_plot %>%
+  labels_dat <- inventory_plot %>%
     nest(data = c(level, package_source, num_package_objects, stems_from, n_level,
                   num_in_level, arrow_start_y, arrow_start_x)) %>%
     select(c(package_name, x_coord_plot, level_num)) %>%
     unnest(c(package_name, x_coord_plot, level_num))
 
-  n_colors <- nlevels(factor(tree_plot$package_source))
+  n_colors <- nlevels(factor(inventory_plot$package_source))
   palette_vals <- c("grey80", "steelblue", "salmon")
   names(palette_vals) <- c("base", "CRAN", "Github")
-  max_y <- max(tree_plot$level_num)
+  max_y <- max(inventory_plot$level_num)
 
-  tree_plot %>%
+  inventory_plot %>%
     ggplot() +
     geom_segment(aes(x = arrow_start_x, y = arrow_start_y,
                      xend = x_coord_plot, yend = level_num), alpha = 0.3) +
@@ -275,4 +283,33 @@ plot_tree <- function(tree_object){
     scale_size_continuous(name = "Number of Objects \nin Package")
 }
 
+
+
+
+
+#' Store an inventory object as a .rda file
+#'
+#' @param inventory_object An inventory object, a tibble from the `take_inventory` function.
+#' @param filepath Location to save the inventory
+#' @param timestamp Add timestamp variable to inventory? Default is `TRUE`.
+#'
+#' @return saved .rda file
+#' @export
+#'
+#' @examples
+#' two_pack_inventory <- take_inventory(packages = c("ggplot2", "dplyr"))
+#' store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder", timestamp = T)
+store_inventory <- function(inventory_object, filepath, timestamp = T){
+  copied_rows <- inventory_object %>% select(package_name) %>% duplicated()
+  inventory_unique <- inventory_object[!copied_rows,]
+  inventory_unique <- inventory_unique %>%
+    mutate(stems_from_vec = purrr::map(package_name, .f = function(x){
+      stems_from_set <- inventory_object %>% filter(package_name == x)
+      stems_from_set <- stems_from_set$stems_from
+      return(stems_from_set)
+    }))
+  if(timestamp == T) {inventory_unique$timestamp <- date()}
+
+  saveRDS(inventory_unique, file = filepath)
+}
 
