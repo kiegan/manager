@@ -227,7 +227,7 @@ take_inventory <- function(packages){
 #' ggplot2_inventory <- take_inventory(packages = "ggplot2")
 #' plot_inventory(inventory_object = ggplot2_inventory)
 plot_inventory <- function(inventory_object){
-  tinventory_plot <- inventory_object %>%
+  inventory_plot <- inventory_object %>%
     mutate(num_package_objects = purrr::map_dbl(package_objects, .f = function(x){
       nrow(x)
     })) %>%
