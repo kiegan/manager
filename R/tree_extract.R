@@ -53,14 +53,14 @@ extract_package_info <- function(packages){
   })
 
   # identify the loaded version of the package
-  package_lversion <- sapply(package_vec,
+  package_version <- sapply(package_vec,
                              FUN = function(x){
-                               devtools::package_info(x)[x,]$loadedversion
+                               devtools::package_info(x)[x,]$ondiskversion
                              })
 
   package_track <- data.frame(package_name = package_vec,
                               package_source = package_source,
-                              package_lversion = package_lversion,
+                              package_version = package_version,
                               stringsAsFactors = F)
 
   # package_gitrepo and package_gitcommit
@@ -79,7 +79,7 @@ extract_package_info <- function(packages){
 
   #### Checksum for package meta-information
   package_track <- package_track %>% rowwise() %>%
-    mutate(package_meta_checksum = digest(c(package_name, package_source, package_lversion,
+    mutate(package_meta_checksum = digest(c(package_name, package_source, package_version,
                                             package_gitrepo, package_gitcommit), algo = c("md5"))) %>%
     as.data.frame()
 
@@ -186,6 +186,7 @@ extract_package_info <- function(packages){
 
 
 
+
 #' Take inventory of entire dependency network for package or vector of packages
 #'
 #' @param packages package name or vector of package names
@@ -235,7 +236,16 @@ take_inventory <- function(packages){
     package_list_new <- package_list_new[!is.na(package_list_new)]
   }
 
-  return(package_tree)
+  copied_rows <- package_tree %>% select(package_name) %>% duplicated()
+  inventory_unique <- package_tree[!copied_rows,]
+  inventory_unique <- inventory_unique %>%
+    mutate(stems_from_vec = purrr::map(package_name, .f = function(x){
+      stems_from_set <- package_tree %>% filter(package_name == x)
+      stems_from_set <- stems_from_set$stems_from
+      return(stems_from_set)
+    }))
+
+  return(inventory_unique)
 }
 
 
@@ -257,8 +267,8 @@ plot_inventory <- function(inventory_object){
     mutate(num_package_objects = purrr::map_dbl(package_objects, .f = function(x){
       nrow(x)
     })) %>%
-    select(c(package_name, package_source, num_package_objects, level, stems_from)) %>%
-    nest(data = c(package_source, num_package_objects, stems_from)) %>%
+    select(c(package_name, package_source, num_package_objects, level, stems_from_vec)) %>%
+    nest(data = c(package_source, num_package_objects, stems_from_vec)) %>%
     group_by(level) %>%
     mutate(n_level = n(), num_in_level = seq_along(n_level),
            x_coord_plot = purrr::map2_dbl(.x = n_level, .y = num_in_level, .f = function(x,y){
@@ -270,19 +280,20 @@ plot_inventory <- function(inventory_object){
       as.numeric(strsplit(x, "_")[[1]][2])
     }),
     arrow_start_y = level_num - 1) %>%
-    unnest(data)
+    unnest(data) %>%
+    unnest(stems_from_vec)
 
   pkg_source <- c()
   row_id <- c()
   for(i in 1:nrow(inventory_plot)){
-    pkg_source[i] <- ifelse(inventory_plot$stems_from[i] == "direct_call",
-                            NA, inventory_plot$stems_from[i])
+    pkg_source[i] <- ifelse(inventory_plot$stems_from_vec[i] == "direct_call",
+                            NA, inventory_plot$stems_from_vec[i])
     row_id[i] <- ifelse(is.na(pkg_source[i]), NA, which(inventory_plot$package_name == pkg_source[i]))
   }
   inventory_plot$arrow_start_x = inventory_plot$x_coord_plot[row_id]
 
   labels_dat <- inventory_plot %>%
-    nest(data = c(level, package_source, num_package_objects, stems_from, n_level,
+    nest(data = c(level, package_source, num_package_objects, stems_from_vec, n_level,
                   num_in_level, arrow_start_y, arrow_start_x)) %>%
     select(c(package_name, x_coord_plot, level_num)) %>%
     unnest(c(package_name, x_coord_plot, level_num))
@@ -313,6 +324,7 @@ plot_inventory <- function(inventory_object){
 
 
 
+
 #' Store an inventory object as a .rda file
 #'
 #' @param inventory_object An inventory object, a tibble from the `take_inventory` function.
@@ -325,16 +337,6 @@ plot_inventory <- function(inventory_object){
 #' two_pack_inventory <- take_inventory(packages = c("ggplot2", "dplyr"))
 #' store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder")
 store_inventory <- function(inventory_object, filepath){
-  copied_rows <- inventory_object %>% select(package_name) %>% duplicated()
-  inventory_unique <- inventory_object[!copied_rows,]
-  inventory_unique <- inventory_unique %>%
-    mutate(stems_from_vec = purrr::map(package_name, .f = function(x){
-      stems_from_set <- inventory_object %>% filter(package_name == x)
-      stems_from_set <- stems_from_set$stems_from
-      return(stems_from_set)
-    }))
-  inventory_unique$timestamp <- date()
-
-  saveRDS(inventory_unique, file = filepath)
+  inventory_object$time_stamp <- date()
+  saveRDS(inventory_object, file = filepath)
 }
-
