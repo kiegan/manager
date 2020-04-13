@@ -77,13 +77,23 @@ extract_package_info <- function(packages){
                                              package_gitcommit = commit, stringsAsFactors = F))
                          })) %>% unnest(package_gitinfo)
 
+  #### Checksum for package meta-information
+  package_track <- package_track %>% rowwise() %>%
+    mutate(package_meta_checksum = digest(c(package_name, package_source, package_lversion,
+                                            package_gitrepo, package_gitcommit), algo = c("md5"))) %>%
+    as.data.frame()
+
+
+  # list of package dependencies and checksum for that list
   package_track <- package_track %>%
     mutate(package_dependencies = purrr::map(package_name, .f = function(x){
       desc_obj <- description$new(file = system.file("DESCRIPTION", package = x))
       package_deps <- desc_obj$get_deps()$package[desc_obj$get_deps()$type == "Depends" | desc_obj$get_deps()$type == "Imports"]
       package_deps <- if(length(package_deps) == 0){NA} else{package_deps}
       return(package_deps)
-    }))
+    }), package_dependencies_checksum =
+      purrr::map_chr(package_dependencies,
+                     .f = function(x) {digest(x, algo = "md5")}))
 
   package_track <- package_track %>%
     mutate(package_objects = purrr::map(package_name, .f = function(package_name){
@@ -121,7 +131,8 @@ extract_package_info <- function(packages){
         dots_val <- ifelse(obj_type == "exported" | obj_type == "data", "::", ":::")
         object_chr_call <- paste0(package_name, dots_val, "`", obj_names, "`")
 
-        #
+        # make dataframe of package object info
+
         package_objects <- data.frame(object_name = obj_names, is_exported = is_exported,
                                       obj_type = obj_type, object_chr_call = object_chr_call,
                                       stringsAsFactors = F)
@@ -131,8 +142,9 @@ extract_package_info <- function(packages){
           mutate(obj_class = purrr::map(object_chr_call, .f = function(x) {class(lazyeval::lazy_eval(x))}),
                  function_text = purrr::map2(.x = object_chr_call, .y = obj_class,
                                              .f = function(x,y){
-                                               if(y[1] == "function") {body(lazyeval::lazy_eval(x))}
-                                               else {lazyeval::lazy_eval(x)}
+                                               deparse(lazyeval::lazy_eval(x))
+                                               #if(y[1] == "function") {body(lazyeval::lazy_eval(x))}
+                                               #else {lazyeval::lazy_eval(x)} ## ADD DEPARSE CAUSE BYTECODES SNEAK INTO LIST-FUNS
                                                #lazyeval::lazy_eval(x)
                                              }),
                  # checksum for object
@@ -151,9 +163,22 @@ extract_package_info <- function(packages){
                  }),
                  params_checksum = purrr::map_chr(fun_params, .f = function(x) digest(x, algo = "md5")))
 
+        # Checksum for meta-information about each object in the package.
+        # (checksums for object and parameter values included in this meta-checksum)
+        package_objects <- package_objects %>%
+          rowwise() %>%
+          mutate(object_meta_checksum = digest(c(object_name, is_exported, obj_type,
+                                                 object_chr_call, obj_class, obj_checksum, params_checksum),
+                                               algo = "md5")) %>%
+          as.data.frame()
 
         return(package_objects)}
+
     }))
+
+  # Checksum for the whole of package objects
+  package_track <- package_track %>%
+    mutate(package_objects_checksum = purrr::map_chr(package_objects, .f = function(x) digest(x, algo = "md5")))
 
   return(package_track)
 
@@ -212,6 +237,7 @@ take_inventory <- function(packages){
 
   return(package_tree)
 }
+
 
 
 
@@ -291,15 +317,14 @@ plot_inventory <- function(inventory_object){
 #'
 #' @param inventory_object An inventory object, a tibble from the `take_inventory` function.
 #' @param filepath Location to save the inventory
-#' @param timestamp Add timestamp variable to inventory? Default is `TRUE`.
 #'
 #' @return saved .rda file
 #' @export
 #'
 #' @examples
 #' two_pack_inventory <- take_inventory(packages = c("ggplot2", "dplyr"))
-#' store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder", timestamp = T)
-store_inventory <- function(inventory_object, filepath, timestamp = T){
+#' store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder")
+store_inventory <- function(inventory_object, filepath){
   copied_rows <- inventory_object %>% select(package_name) %>% duplicated()
   inventory_unique <- inventory_object[!copied_rows,]
   inventory_unique <- inventory_unique %>%
@@ -308,7 +333,7 @@ store_inventory <- function(inventory_object, filepath, timestamp = T){
       stems_from_set <- stems_from_set$stems_from
       return(stems_from_set)
     }))
-  if(timestamp == T) {inventory_unique$timestamp <- date()}
+  inventory_unique$timestamp <- date()
 
   saveRDS(inventory_unique, file = filepath)
 }
