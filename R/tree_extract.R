@@ -327,7 +327,7 @@ plot_inventory <- function(inventory_object){
 
 #' Store an inventory object as a .rda file
 #'
-#' @param inventory_object An inventory object, a tibble from the `take_inventory` function.
+#' @param inventory_object An inventory object, a data.frame from the `take_inventory` function.
 #' @param filepath Location to save the inventory
 #'
 #' @return saved .rda file
@@ -335,8 +335,300 @@ plot_inventory <- function(inventory_object){
 #'
 #' @examples
 #' two_pack_inventory <- take_inventory(packages = c("ggplot2", "dplyr"))
-#' store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder")
+#' \dontrun{store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder/filename.rda")}
 store_inventory <- function(inventory_object, filepath){
   inventory_object$time_stamp <- date()
   saveRDS(inventory_object, file = filepath)
 }
+
+
+
+#' Compare two inventory objects
+#'
+#' @param inventory1 An inventory object, a data.frame from the `take_inventory` function
+#' @param inventory2 A second inventory object, a data.frame from the `take_inventory` function
+#' @param object_types A vector of object types to compare. Default is "exported" objects only, but can be any of c("exported", "non-exported", "data").
+#' @param report_type A vector of reporting type preferences. "table" returns a data.frame with one row for each object that differs between the two inventories. "summary" returns concatenated summaries of identified differences. "objects" returns a data.frame with one row for each object which differs between the two inventories, but also includes the objects themselves as well as checksums.
+#' @param summary_file A file to store inventory difference summary information. Default is "", which will return the summary in the console.
+#'
+#' @return a list with element `table`. A text summary will be saved to the file specified in `summary_file`, or printed in the console.
+#' @export
+#'
+#' @examples \dontrun{compare_inventory(inventory1, inventory2)}
+compare_inventory <- function(inventory1, inventory2,
+                              object_types = "exported",
+                              report_type = c("table", "summary", "objects"),
+                              summary_file = ""){
+  `%notin%` = Negate(`%in%`)
+  # first, add column to each inventory which specifies whether it's old or new
+  inventory1$inventory1 <- TRUE
+  inventory2$inventory2 <- TRUE
+
+  # second, take a look at checksum 1
+  inventory_check1 <- full_join(inventory1 %>%
+                                  select(package_name, package_meta_checksum, inventory1),
+                                inventory2 %>%
+                                  select(package_name, package_meta_checksum, inventory2),
+                                by = c("package_name", "package_meta_checksum")) %>%
+    filter((is.na(inventory1) | is.na(inventory2)))
+
+  check1_drops_adds <- inventory_check1 %>%
+    group_by(package_name) %>%
+    summarise(n = n()) %>%
+    filter(n == 1) %>%
+    pull(package_name)
+  #check1_drops <- inventory_check1 %>%
+  #  filter(package_name %in% check1_drops_adds, inventory1 == T)
+  #check1_adds <- inventory_check1 %>%
+  #  filter(package_name %in% check1_drops_adds, inventory2 == T)
+
+  check1_changes <- inventory_check1 %>%
+    filter(package_name %notin% check1_drops_adds) %>%
+    pull(package_name) %>%
+    unique()
+  # filter out to packages which remain in this vector.
+
+  #### TO DO: MESSAGING FOR UPDATED PACKAGE VERSIONS
+  inventory1 <- inventory1 %>% filter(package_name %in% check1_changes)
+  inventory2 <- inventory2 %>% filter(package_name %in% check1_changes)
+
+  # next, take a look at another checksum: the set of package objects.
+  inventory_check2 <- full_join(inventory1 %>% select(package_name, package_objects_checksum, inventory1),
+                                inventory2 %>% select(package_name, package_objects_checksum, inventory2),
+                                by = c("package_name", "package_objects_checksum"))
+
+  # identify package whose meta-information has changed but the package objects have not changed
+  check2_ident_objects <- inventory_check2 %>%
+    filter((inventory1 == TRUE & inventory2 == TRUE)) %>%
+    pull(package_name)
+
+  # next, take a look at object meta-information
+
+  inventory1_long <- inventory1 %>%
+    filter(package_name %notin% check2_ident_objects) %>%
+    unnest(package_objects)
+  inventory2_long <- inventory2 %>%
+    filter(package_name %notin% check2_ident_objects) %>%
+    unnest(package_objects)
+
+  inventory_check3 <- full_join(inventory1_long %>%
+                                  select(package_name, object_name, object_meta_checksum, inventory1),
+                                inventory2_long %>%
+                                  select(package_name, object_name, object_meta_checksum, inventory2),
+                                by = c("package_name", "object_name", "object_meta_checksum"))
+
+  check3_object_changes <- inventory_check3 %>%
+    filter((is.na(inventory1) | is.na(inventory2))) %>% select(package_name, object_name) %>% unique()
+
+  check3_cols <- c("package_name", "object_name", "is_exported", "obj_type", "object_chr_call", "obj_checksum","fun_type", "params_checksum")
+  inventory1_check3 <- left_join(check3_object_changes, inventory1_long %>% select(all_of(check3_cols), "inventory1"),
+                                 by = c("package_name", "object_name"))
+  inventory2_check3 <- left_join(check3_object_changes, inventory2_long %>% select(all_of(check3_cols), "inventory2"),
+                                 by = c("package_name", "object_name"))
+
+  inventory_check3_detail <- full_join(inventory1_check3, inventory2_check3,
+                                       by = c("package_name", "object_name", "is_exported",
+                                              "obj_type", "object_chr_call", "obj_checksum",
+                                              "fun_type", "params_checksum")) %>%
+    filter((is.na(inventory1) | is.na(inventory2)))
+
+  inventory_check3_detail <- inventory_check3_detail %>%
+    mutate(inventory_id = ifelse((inventory1 == T & is.na(inventory2)), "inv1", NA),
+           inventory_id = ifelse((inventory2 == T & is.na(inventory1)), "inv2", inventory_id)) %>%
+    filter(obj_type %in% object_types)
+
+
+  inventory_check3_meta <- inventory_check3_detail %>%
+    group_by(package_name, object_name) %>%
+    summarise()
+
+  inv1_check3 <- inventory_check3_detail %>%
+    filter(inventory_id == "inv1") %>%
+    rename(is_exported_inv1 = is_exported,
+           obj_type_inv1 = obj_type,
+           obect_chr_call_inv1 = object_chr_call,
+           obj_checksum_inv1 = obj_checksum,
+           fun_type_inv1 = fun_type,
+           params_checksum_inv1 = params_checksum) %>%
+    select(-c(inventory1, inventory2, inventory_id))
+
+  inv2_check3 <- inventory_check3_detail %>%
+    filter(inventory_id == "inv2") %>%
+    rename(is_exported_inv2 = is_exported,
+           obj_type_inv2 = obj_type,
+           obect_chr_call_inv2 = object_chr_call,
+           obj_checksum_inv2 = obj_checksum,
+           fun_type_inv2 = fun_type,
+           params_checksum_inv2 = params_checksum) %>%
+    select(-c(inventory1, inventory2, inventory_id))
+
+  inventory_check3_report <- inventory_check3_meta %>%
+    left_join(., inv1_check3, by = c("package_name", "object_name")) %>%
+    left_join(., inv2_check3, by = c("package_name", "object_name")) %>%
+    mutate(obj_inv1 = ifelse(is.na(obj_checksum_inv1), "not in inv1", "in inv1"),
+           obj_inv2 = ifelse(is.na(obj_checksum_inv2), "not in inv2", "in inv2")) %>%
+    mutate(obj_same = ifelse(obj_checksum_inv1 == obj_checksum_inv2, T, F),
+           params_same = ifelse(params_checksum_inv1 == params_checksum_inv2, T, F)) %>%
+    mutate(object_presence =
+             purrr::map2_chr(.x = obj_inv1, .y = obj_inv2,
+                             .f = function(obj_inv1, obj_inv2){
+                               classification = NA
+                               classification <-
+                                 if(obj_inv1 == "not in inv1" & obj_inv2 == "in inv2"){
+                                   "Object in Inventory 2 but not Inventory 1"}
+                               else if(obj_inv2 == "not in inv2" & obj_inv1 == "in inv1"){
+                                 "Object in Inventory 1 but not Inventory 2"}
+                               else if(obj_inv1 == "in inv1" & obj_inv2 == "in inv2"){
+                                 "Object in both Inventories"}
+                             }),
+           object_changes =
+             purrr::pmap_chr(list(obj_same,params_same, object_presence),
+                             .f = function(obj_same, params_same, object_presence){
+                               classification = ifelse(object_presence ==
+                                                         "Object in both Inventories", NA, "Object dropped or added")
+
+                               obj_and_param <- paste0(obj_same, params_same)
+                               classification <-
+                                 if(obj_and_param == "TRUEFALSE" & is.na(classification)){
+                                   "Object unchanged but parameters changed"}
+                               else if(obj_and_param == "FALSETRUE" & is.na(classification)){
+                                 "Objects changed but parameters unchanged"}
+                               else if(obj_and_param == "FALSEFALSE" & is.na(classification)){
+                                 "Both object and parameters changed. Object change may be due to parameter changes."}
+                               else {classification}
+                             }))
+
+  return_table <- inventory_check3_report %>%
+    select(package_name, object_name,
+           object_presence, object_changes,
+           obj_same, params_same) %>%
+    ungroup()
+
+
+  return_summary_info <- return_table %>%
+    group_by(package_name) %>% summarise(n_object_changes = n(), n_param_changes = sum(params_same == F, na.rm = T))
+
+  if(nrow(return_table) > 0){
+    print_info <- ""
+    for(i in 1:nrow(return_summary_info)){
+      current_package <- return_summary_info$package_name[i]
+      current_package_changes <- return_summary_info$n_object_changes[i]
+      functions <- ""
+      params <- ""
+      package_objects_changed <- for(j in 1:current_package_changes){
+        func <- return_table[return_table$package_name == current_package,]$object_name[j]
+        param <- return_table[return_table$package_name == current_package,]$params_same[j]
+        param_text <- ifelse((param == T | is.na(param)), " ", "**")
+        functions <- paste0(functions, "\n", j, ". ", func, param_text)
+      }
+      to_print <- paste0("\nThe '", current_package,
+                         "' package has ",
+                         return_summary_info$n_object_changes[i],
+                         " object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): \n",
+                         functions, " \n")
+      print_info <- paste0(print_info, to_print)
+
+    }}
+
+  if(nrow(return_table) == 0) {print_info <- "No changes detected between inventories."}
+
+  ## here I want to add a thing that pulls the right objects from the inventories.
+  inventory1_include <- inventory1 %>%
+    filter(package_name %in% return_table$package_name) %>%
+    unnest(package_objects) %>%
+    filter(object_name %in% return_table$object_name) %>%
+    select(package_name, object_name, package_source, package_version,
+           package_gitrepo, package_gitcommit,
+           function_text, fun_params,
+           obj_checksum, params_checksum) %>%
+    rename(package_source_inv1 = package_source,
+           package_version_inv1 = package_version,
+           package_gitrepo_inv1 = package_gitrepo,
+           package_gitcommit_inv1 = package_gitcommit,
+           function_text_inv1 = function_text,
+           fun_params_inv1 = fun_params,
+           obj_checksum_inv1 = obj_checksum,
+           params_checksum_inv1 = params_checksum)
+
+  inventory2_include <- inventory2 %>%
+    filter(package_name %in% return_table$package_name) %>%
+    unnest(package_objects) %>%
+    filter(object_name %in% return_table$object_name) %>%
+    select(package_name, object_name, package_source, package_version,
+           package_gitrepo, package_gitcommit,
+           function_text, fun_params,
+           obj_checksum, params_checksum) %>%
+    rename(package_source_inv2 = package_source,
+           package_version_inv2 = package_version,
+           package_gitrepo_inv2 = package_gitrepo,
+           package_gitcommit_inv2 = package_gitcommit,
+           function_text_inv2 = function_text,
+           fun_params_inv2 = fun_params,
+           obj_checksum_inv2 = obj_checksum,
+           params_checksum_inv2 = params_checksum)
+
+  inventory_diff_objects <- return_table %>%
+    left_join(., inventory1_include, by = c("package_name", "object_name")) %>%
+    left_join(., inventory2_include, by = c("package_name", "object_name"))
+
+
+  if("summary" %in% report_type) {cat(print_info, file = summary_file)}
+
+  return_list <- list(table = return_table, objects = inventory_diff_objects)
+  report_types <- report_type[report_type != "summary"]
+  return(return_list[report_types])
+
+}
+
+
+
+#' Check an R script for presence of affected object changes
+#'
+#' @param compare_object Comparison object of two inventories as returned by `compare_inventory`.
+#' @param script_filepath Filepath to a script of interest.
+#' @param is_R_script Logical. Default is TRUE, which assumes the script is a .R file. If FALSE, applies `knitr::purl` to convert to a .R script prior to parsing.
+#' @param include_specials Logical. Whether to include special characters as objects when searching script.
+#' @param summary_file Character. Default is `""`, which prints resulting summary to the console. If a filepath to a .txt file is provided, summary will save to the file instead.
+#'
+#' @return Concatenated summary of whether script involves any affected objects from the inventory comparison object.
+#' @export
+#'
+#' @examples \dontrun{script_check(compare_object, script_filepath, summary_file = "script-check-results.txt")}
+script_check <- function(compare_object, script_filepath, is_R_script = T, include_specials = F, summary_file = ""){
+  object_diffs <- compare_object$table$object_name
+  if(is_R_script == T) {parse_info <- getParseData(parse(script_filepath))}
+  else if(is_R_script == F) {parse_info <- getParseData(parse(knitr::purl(script_filepath)))}
+  diff_table <- parse_info %>%
+    filter(text %in% object_diffs) %>%
+    select(line1, token, text) %>%
+    group_by(text) %>%
+    mutate(n = n()) %>%
+    nest(data = c("line1"))
+
+  if(include_specials == F) {diff_table <- diff_table %>% filter(token != "SPECIAL")}
+
+  if(nrow(diff_table) > 0){
+    print_info <- ""
+    for(i in 1:nrow(diff_table)){
+      current_diff <- diff_table$text[i]
+      current_diff_lines <- nrow(diff_table[i,] %>% unnest(data))
+      lines <- ""
+      package_objects_changed <- for(j in 1:current_diff_lines){
+        line_data <- diff_table %>% filter(text == current_diff) %>% unnest(data) %>% pull(line1)
+        line <- line_data[j]
+        lines <- paste0(lines, "\n", line)
+      }
+      to_print <- paste0("\nThe object '", current_diff,
+                         "' differs between inventory1 and inventory2, and appears in the provided script file ",
+                         current_diff_lines,
+                         " time(s), on the following line(s): \n",
+                         lines, " \n")
+      print_info <- paste0(print_info, to_print)
+
+    }}
+
+  if(nrow(diff_table) == 0) {print_info <- "No instances of changed objects in provided script file."}
+
+  return(cat(print_info, file = summary_file))
+}
+

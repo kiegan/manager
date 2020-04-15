@@ -4,14 +4,12 @@
 \alias{store_inventory}
 \title{Store an inventory object as a .rda file}
 \usage{
-store_inventory(inventory_object, filepath, timestamp = T)
+store_inventory(inventory_object, filepath)
 }
 \arguments{
-\item{inventory_object}{An inventory object, a tibble from the `take_inventory` function.}
+\item{inventory_object}{An inventory object, a data.frame from the `take_inventory` function.}
 
 \item{filepath}{Location to save the inventory}
-
-\item{timestamp}{Add timestamp variable to inventory? Default is `TRUE`.}
 }
 \value{
 saved .rda file
@@ -21,5 +19,5 @@ Store an inventory object as a .rda file
 }
 \examples{
 two_pack_inventory <- take_inventory(packages = c("ggplot2", "dplyr"))
-store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder", timestamp = T)
+\dontrun{store_inventory(two_pack_inventory, filepath = "~/Path/To/Folder/filename.rda")}
 }
