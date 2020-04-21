@@ -299,24 +299,24 @@ plot_inventory <- function(inventory_object){
     unnest(c(package_name, x_coord_plot, level_num))
 
   n_colors <- nlevels(factor(inventory_plot$package_source))
-  palette_vals <- c("grey80", "steelblue", "salmon")
-  names(palette_vals) <- c("base", "CRAN", "Github")
+  palette_vals <- c("grey50", "steelblue", "goldenrod2", "darkred")
+  names(palette_vals) <- c("base", "CRAN", "Github", "local")
   max_y <- max(inventory_plot$level_num)
 
   inventory_plot %>%
     ggplot() +
     geom_segment(aes(x = arrow_start_x, y = arrow_start_y,
-                     xend = x_coord_plot, yend = level_num), alpha = 0.3) +
+                     xend = x_coord_plot, yend = level_num), color = "grey70", alpha = 0.5) +
     geom_point(aes(x = x_coord_plot, y = level_num,
                    size = num_package_objects,
-                   fill = package_source), shape = 21, color = "black") +
+                   color = package_source)) +
     geom_text(data = labels_dat,
               aes(x = x_coord_plot, y = level_num - 0.12, label = package_name),
               angle = 30) +
     theme_void() +
     ylim(c(max_y, -.5)) +
     #xlim(c(-0.2, 1.2)) +
-    scale_fill_manual(name = "Package Source", values = palette_vals) +
+    scale_color_manual(name = "Package Source", values = palette_vals) +
     scale_size_continuous(name = "Number of Objects \nin Package")
 }
 
