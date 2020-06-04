@@ -1,11 +1,11 @@
 Package: manager
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Adaptive Computational Reproducibility Tools for R
 Version: 0.1.0
 Authors@R: person("Kiegan", "Rice", email = "ricek@iastate.edu", role = c("aut", "cre"))
 Maintainer: Kiegan Rice <ricek@iastate.edu>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: This package is meant to give users tools to take, visualize, and store package dependency inventories as well as compare package inventories across users, machines, or time. 
+    Comparison of package inventories allows users to quickly identify specific changes to objects in R packages used in data analyses. 
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true

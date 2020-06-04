@@ -1,0 +1,95 @@
+
+The 'cli' package has 1 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. is_ansi_tty  
+
+The 'digest' package has 1 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. digest  
+
+The 'dplyr' package has 9 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. contains**
+2. ends_with**
+3. enquos 
+4. everything**
+5. last_col**
+6. matches**
+7. num_range**
+8. one_of**
+9. starts_with** 
+
+The 'lifecycle' package has 8 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. deprecate_soft 
+2. deprecate_warn 
+3. expect_defunct 
+4. expect_deprecated 
+5. is_present 
+6. lifecycle_cnd_data 
+7. signal_experimental 
+8. signal_superseded  
+
+The 'purrr' package has 5 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. is_formula 
+2. is_function 
+3. partial 
+4. prepend**
+5. set_names  
+
+The 'rlang' package has 13 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. %|% 
+2. arg_match 
+3. as_string 
+4. enquos 
+5. is_closure 
+6. is_formula 
+7. is_function 
+8. is_primitive 
+9. is_primitive_eager 
+10. is_primitive_lazy 
+11. names2 
+12. new_quosures 
+13. set_names  
+
+The 'tidyselect' package has 19 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. all_of 
+2. any_of 
+3. contains**
+4. ends_with**
+5. eval_rename 
+6. eval_select 
+7. everything**
+8. last_col**
+9. matches**
+10. num_range**
+11. one_of**
+12. peek_data 
+13. peek_vars**
+14. starts_with**
+15. vars_pull 
+16. vars_rename 
+17. vars_select 
+18. vars_select_helpers 
+19. with_vars  
+
+The 'vctrs' package has 15 object differences between the two inventories. Differences were identified in the following objects (** denotes parameter changes): 
+
+1. is_partial 
+2. new_data_frame**
+3. new_list_of 
+4. num_as_location**
+5. validate_list_of 
+6. vec_as_index 
+7. vec_as_location 
+8. vec_as_names 
+9. vec_as_subscript 
+10. vec_default_ptype2 
+11. vec_in**
+12. vec_is_list 
+13. vec_match**
+14. vec_ptype_finalise 
+15. vec_unchop  
