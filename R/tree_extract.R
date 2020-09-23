@@ -1,6 +1,8 @@
 #' Extract parameter information from a function
 #'
-#' @param fun_call
+#' @param fun_call text string for function call for which parameter information should be returned.
+#'
+#' @export
 #'
 #' @return data.frame
 #'
@@ -35,6 +37,7 @@ extract_function_params <- function(fun_call){
 #'
 #' @return a tibble
 #' @export
+#' @importFrom utils installed.packages
 #'
 #' @examples
 #' extract_package_info(packages = "ggplot2")
@@ -193,6 +196,7 @@ extract_package_info <- function(packages){
 #'
 #' @return a tibble
 #' @export
+#' @importFrom dplyr filter select
 #'
 #' @examples
 #' take_inventory(packages = "ggplot2")
@@ -591,6 +595,7 @@ compare_inventory <- function(inventory1, inventory2,
 #' @param summary_file Character. Default is `""`, which prints resulting summary to the console. If a filepath to a .txt file is provided, summary will save to the file instead.
 #'
 #' @return Concatenated summary of whether script involves any affected objects from the inventory comparison object.
+#' @importFrom utils getParseData
 #' @export
 #'
 #' @examples \dontrun{script_check(compare_object, script_filepath, summary_file = "script-check-results.txt")}
