@@ -2,8 +2,15 @@ Package: manager
 Type: Package
 Title: Adaptive Computational Reproducibility Tools for R
 Version: 0.1.0
-Authors@R: person("Kiegan", "Rice", email = "ricek@iastate.edu", role = c("aut", "cre"))
-Maintainer: Kiegan Rice <ricek@iastate.edu>
+Authors@R: 
+    c(person("Kiegan", 
+              "Rice", 
+              email = "kieganrice@gmail.com", 
+              role = c("aut", "cre")), 
+      person("Heike",
+             "Hofmann", 
+              role = "ctb"))
+Maintainer: Kiegan Rice <kieganrice@gmail.com>
 Description: This package is provides tools to users to take, visualize, and store package dependency inventories as well as compare package inventories across users, machines, or time. 
     Comparison of package inventories allows users to quickly identify specific changes to objects in R packages used in data analyses. 
 License: GPL-3 | file LICENSE
