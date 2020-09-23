@@ -20,4 +20,6 @@ Imports:
     desc, 
     dplyr, 
     tidyr, 
-    ggplot2
+    ggplot2,
+    devtools,
+    knitr

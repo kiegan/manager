@@ -45,6 +45,7 @@ extract_function_params <- function(fun_call){
 #' @importFrom digest digest
 #' @importFrom desc description
 #' @importFrom rlang is_primitive is_closure
+#' @importFrom devtools package_info
 #'
 #' @examples
 #' extract_package_info(packages = "ggplot2")
@@ -632,6 +633,7 @@ compare_inventory <- function(inventory1, inventory2,
 #' @return Concatenated summary of whether script involves any affected objects from the inventory comparison object.
 #' @importFrom utils getParseData
 #' @importFrom tidyr nest
+#' @importFrom knitr purl
 #' @export
 #'
 #' @examples \dontrun{script_check(compare_object, script_filepath, summary_file = "script-check-results.txt")}
