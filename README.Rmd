@@ -30,8 +30,8 @@ This is accomplished using package *inventories*.
 You can install the development version from [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("kiegan/manager")
+# install.packages("remotes")
+remotes::install_github("kiegan/manager")
 ```
 ## Take Package Inventory  
 
@@ -47,6 +47,7 @@ plot_inventory(project_inventory)
 
 
 ```{r, echo = F, message = F, warning = F}
+library(dplyr)
 library(manager)
 project_inventory <- readRDS("README_files/data/kiegan_inventory.rda")
 plot_inventory(project_inventory)
@@ -99,7 +100,7 @@ The `$objects` element contains the same information as `$table`, but additional
 head(ab_compare$objects)
 ```
 
-We can look at the deparsed text of the function in each inventory:  
+We can now compare the deparsed text of the function across two inventories:  
 ```{r}
 ab_compare$objects %>% 
   filter(package_name == "dplyr", object_name == "contains") %>% 
@@ -114,7 +115,7 @@ ab_compare$objects %>%
 
 ```{r, eval = F}
 script_check(compare_object = ab_compare, 
-             script_filepath = "path/to/R/script.R") # for a .R script 
+             script_filepath = "path/to/R/script.R") # for an .R script 
 script_check(compare_object = ab_compare, 
              script_filepath = "path/to/R/script.Rmd", 
              is_R_script = F) # function will convert .Rmd, .Rnw to .R before parsing  

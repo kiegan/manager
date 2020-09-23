@@ -25,8 +25,8 @@ You can install the development version from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("kiegan/manager")
+# install.packages("remotes")
+remotes::install_github("kiegan/manager")
 ```
 
 ## Take Package Inventory
@@ -124,7 +124,8 @@ head(ab_compare$objects)
 #> #   fun_params_inv2 <list>, obj_checksum_inv2 <chr>, params_checksum_inv2 <chr>
 ```
 
-We can look at the deparsed text of the function in each inventory:
+We can now compare the deparsed text of the function across two
+inventories:
 
 ``` r
 ab_compare$objects %>% 
@@ -159,7 +160,7 @@ ab_compare$objects %>%
 
 ``` r
 script_check(compare_object = ab_compare, 
-             script_filepath = "path/to/R/script.R") # for a .R script 
+             script_filepath = "path/to/R/script.R") # for an .R script 
 script_check(compare_object = ab_compare, 
              script_filepath = "path/to/R/script.Rmd", 
              is_R_script = F) # function will convert .Rmd, .Rnw to .R before parsing  
