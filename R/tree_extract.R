@@ -3,7 +3,8 @@
 #' @param fun_call text string for function call for which parameter information should be returned.
 #'
 #' @export
-#'
+#' @importFrom dplyr `%>%` mutate
+#' @importFrom stringr str_split
 #' @return data.frame
 #'
 #' @examples
@@ -38,6 +39,7 @@ extract_function_params <- function(fun_call){
 #' @return a tibble
 #' @export
 #' @importFrom utils installed.packages
+#' @importFrom tidyr unnest
 #'
 #' @examples
 #' extract_package_info(packages = "ggplot2")

@@ -7,7 +7,7 @@
 extract_function_params(fun_call)
 }
 \arguments{
-\item{fun_call}{}
+\item{fun_call}{text string for function call for which parameter information should be returned.}
 }
 \value{
 data.frame
