@@ -365,6 +365,7 @@ store_inventory <- function(inventory_object, filepath){
 #' @param summary_file A file to store inventory difference summary information. Default is "", which will return the summary in the console.
 #'
 #' @return a list with element `table`. A text summary will be saved to the file specified in `summary_file`, or printed in the console.
+#' @import dplyr
 #' @export
 #'
 #' @examples \dontrun{compare_inventory(inventory1, inventory2)}
@@ -376,6 +377,12 @@ compare_inventory <- function(inventory1, inventory2,
   # first, add column to each inventory which specifies whether it's old or new
   inventory1$inventory1 <- TRUE
   inventory2$inventory2 <- TRUE
+
+  # define global variables to make R CMD CHECK happy
+  package_name <- package_meta_checksum <- package_objects_checksum <- NULL
+  package_objects <- object_name <- object_meta_checksum <- NULL
+  inventory_id <- obj_type <- is_exported <- object_chr_call <- NULL
+  obj_checksum <- NULL
 
   # second, take a look at checksum 1
   inventory_check1 <- full_join(inventory1 %>%
