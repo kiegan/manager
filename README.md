@@ -6,6 +6,8 @@ Kiegan Rice, Heike Hofmann
 
 <!-- badges: start -->
 
+[![Travis build
+status](https://travis-ci.org/kiegan/manager.svg?branch=master)](https://travis-ci.org/kiegan/manager)
 <!-- badges: end -->
 
 The goal of manager is to provide users with tools to use an adaptive
