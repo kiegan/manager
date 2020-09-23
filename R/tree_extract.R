@@ -55,6 +55,13 @@ extract_package_info <- function(packages){
   # (can probably do this in the wrapper function)
   package_vec <- packages
 
+  # define global variables to make R CMD CHECK happy
+  package_name <- package_gitinfo <- package_gitrepo <- NULL
+  package_gitcommit <- package_dependencies <- obj_class <- NULL
+  function_text <- fun_type <- fun_params <- object_name <- NULL
+  obj_checksum <- params_checksum <- package_objects <- NULL
+
+
   # identify base packages installed
   base_packages <- rownames(installed.packages(priority = "base"))
 
@@ -210,6 +217,8 @@ extract_package_info <- function(packages){
 #' take_inventory(packages = c("ggplot2", "dplyr"))
 take_inventory <- function(packages){
   `%notin%` = Negate(`%in%`)
+  package_dependencies <- package_name <- NULL
+
   package_list <- packages
   message("Extracting direct dependencies...")
 
@@ -276,6 +285,12 @@ take_inventory <- function(packages){
 #' ggplot2_inventory <- take_inventory(packages = "ggplot2")
 #' plot_inventory(inventory_object = ggplot2_inventory)
 plot_inventory <- function(inventory_object){
+  # define global variables to make R CMD CHECK happy
+  package_objects <- package_name <- package_source <- NULL
+  num_package_objects <- level <- stems_from_vec <- n_level <- NULL
+  num_in_level <- data <- arrow_start_y <- arrow_start_x <- NULL
+  x_coord_plot <- level_num <- NULL
+
   inventory_plot <- inventory_object %>%
     mutate(num_package_objects = purrr::map_dbl(package_objects, .f = function(x){
       nrow(x)
@@ -382,7 +397,11 @@ compare_inventory <- function(inventory1, inventory2,
   package_name <- package_meta_checksum <- package_objects_checksum <- NULL
   package_objects <- object_name <- object_meta_checksum <- NULL
   inventory_id <- obj_type <- is_exported <- object_chr_call <- NULL
-  obj_checksum <- NULL
+  obj_checksum <- fun_type <- params_checksum <- obj_checksum_inv1 <- NULL
+  obj_checksum_inv2 <- params_checksum_inv1 <- params_checksum_inv2 <- NULL
+  obj_inv1 <- obj_inv2 <- obj_same <- params_same <- object_presence <- NULL
+  object_changes <- package_source <- package_gitrepo <- NULL
+  package_gitcommit <- function_text <- fun_params <- NULL
 
   # second, take a look at checksum 1
   inventory_check1 <- full_join(inventory1 %>%
@@ -483,8 +502,8 @@ compare_inventory <- function(inventory1, inventory2,
     select(-c(inventory1, inventory2, inventory_id))
 
   inventory_check3_report <- inventory_check3_meta %>%
-    left_join(., inv1_check3, by = c("package_name", "object_name")) %>%
-    left_join(., inv2_check3, by = c("package_name", "object_name")) %>%
+    left_join(inv1_check3, by = c("package_name", "object_name")) %>%
+    left_join(inv2_check3, by = c("package_name", "object_name")) %>%
     mutate(obj_inv1 = ifelse(is.na(obj_checksum_inv1), "not in inv1", "in inv1"),
            obj_inv2 = ifelse(is.na(obj_checksum_inv2), "not in inv2", "in inv2")) %>%
     mutate(obj_same = ifelse(obj_checksum_inv1 == obj_checksum_inv2, T, F),
@@ -588,8 +607,8 @@ compare_inventory <- function(inventory1, inventory2,
            params_checksum_inv2 = params_checksum)
 
   inventory_diff_objects <- return_table %>%
-    left_join(., inventory1_include, by = c("package_name", "object_name")) %>%
-    left_join(., inventory2_include, by = c("package_name", "object_name"))
+    left_join(inventory1_include, by = c("package_name", "object_name")) %>%
+    left_join(inventory2_include, by = c("package_name", "object_name"))
 
 
   if("summary" %in% report_type) {cat(print_info, file = summary_file)}
@@ -617,6 +636,9 @@ compare_inventory <- function(inventory1, inventory2,
 #'
 #' @examples \dontrun{script_check(compare_object, script_filepath, summary_file = "script-check-results.txt")}
 script_check <- function(compare_object, script_filepath, is_R_script = T, include_specials = F, summary_file = ""){
+  # define global variables
+  text <- line1 <- token <- data <- NULL
+
   object_diffs <- compare_object$table$object_name
   if(is_R_script == T) {parse_info <- getParseData(parse(script_filepath))}
   else if(is_R_script == F) {parse_info <- getParseData(parse(knitr::purl(script_filepath)))}
