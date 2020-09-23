@@ -270,6 +270,7 @@ take_inventory <- function(packages){
 #' @return a ggplot visualization of the given dependency tree
 #' @export
 #' @importFrom dplyr group_by ungroup n
+#' @import ggplot2
 #'
 #' @examples
 #' ggplot2_inventory <- take_inventory(packages = "ggplot2")
